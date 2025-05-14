@@ -36,7 +36,7 @@ on run {input, parameters}
         end try
         
         -- Organization ID for Happy Scribe
-        set organizationId to "8761770"
+        set organizationId to "1234567"
         
         -- Show confirmation before sending
         display dialog "Ready to send " & fileName & " to Happy Scribe with:" & return & return & "Organization ID: " & organizationId buttons {"Cancel", "Send"} default button "Send"
