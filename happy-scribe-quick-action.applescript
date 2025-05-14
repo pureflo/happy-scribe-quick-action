@@ -20,6 +20,9 @@ on run {input, parameters}
         -- Get file name for the transcription
         set fileName to do shell script "basename " & quoted form of filePath
         
+        -- URL encode the filename for the API request (handle spaces and special characters)
+        set encodedFileName to do shell script "echo " & quoted form of fileName & " | sed 's/ /%20/g'"
+        
         -- Get API key from Keychain or ask user
         try
             set apiKey to do shell script "security find-generic-password -s 'HappyScribeAPI' -w"
@@ -39,8 +42,20 @@ on run {input, parameters}
         display dialog "Ready to send " & fileName & " to Happy Scribe with:" & return & return & "Organization ID: " & organizationId buttons {"Cancel", "Send"} default button "Send"
         
         -- STEP 1: Get a signed URL for file upload
-        set getUrlCmd to "curl -s -X GET 'https://www.happyscribe.com/api/v1/uploads/new?filename=" & fileName & "' -H 'Authorization: Bearer " & apiKey & "'"
-        set signedUrlResponse to do shell script getUrlCmd
+        set getUrlCmd to "curl -s -X GET 'https://www.happyscribe.com/api/v1/uploads/new?filename=" & encodedFileName & "' -H 'Authorization: Bearer " & apiKey & "'"
+        
+        try
+            set signedUrlResponse to do shell script getUrlCmd
+            
+            -- Check for error response
+            if signedUrlResponse contains "\"error\":" then
+                display dialog "Error getting signed URL: " & signedUrlResponse buttons {"OK"} default button "OK"
+                return input
+            end if
+        on error urlErr
+            display dialog "Error executing URL request: " & urlErr & return & return & "Command: " & getUrlCmd buttons {"OK"} default button "OK"
+            return input
+        end try
         
         -- Extract the signed URL using simple text parsing
         if signedUrlResponse contains "\"signedUrl\":" then
@@ -67,10 +82,16 @@ on run {input, parameters}
         set uploadCmd to "curl -s -X PUT -T " & quoted form of filePath & " " & quoted form of signedUrl
         
         try
-            do shell script uploadCmd
-            display dialog "File uploaded successfully!" buttons {"Continue"} default button "Continue"
+            set uploadResponse to do shell script uploadCmd
+            
+            -- If upload command returns any error message, show it
+            if uploadResponse is not "" then
+                display dialog "File upload response: " & uploadResponse buttons {"Continue"} default button "Continue"
+            else
+                display dialog "File uploaded successfully!" buttons {"Continue"} default button "Continue"
+            end if
         on error uploadErr
-            display dialog "Error uploading file: " & uploadErr buttons {"OK"} default button "OK"
+            display dialog "Error uploading file: " & uploadErr & return & return & "Command: " & uploadCmd buttons {"OK"} default button "OK"
             return input
         end try
         
@@ -81,6 +102,9 @@ on run {input, parameters}
         
         do shell script "echo " & quoted form of jsonContent & " > " & quoted form of tmpJsonFile
         
+        -- Show the JSON content for debugging
+        display dialog "Using this JSON:" & return & jsonContent buttons {"Continue"} default button "Continue"
+        
         -- Create the transcription using the JSON file
         set createCmd to "curl -s -X POST 'https://www.happyscribe.com/api/v1/transcriptions' -H 'Authorization: Bearer " & apiKey & "' -H 'Content-Type: application/json' -d @" & quoted form of tmpJsonFile
         
@@ -90,8 +114,11 @@ on run {input, parameters}
             -- Clean up temp file
             do shell script "rm -f " & quoted form of tmpJsonFile
             
+            -- Show raw response for debugging
+            display dialog "API Response: " & apiResponse buttons {"Continue"} default button "Continue"
+            
             -- Check for error response
-            if apiResponse contains "error" then
+            if apiResponse contains "\"error\":" then
                 display dialog "API Error: " & apiResponse buttons {"OK"} default button "OK"
                 return input
             end if
