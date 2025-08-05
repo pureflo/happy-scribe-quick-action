@@ -14,7 +14,7 @@ A macOS Quick Action workflow that allows you to easily send MP3 files to Happy 
 
 - macOS (tested on macOS Monterey and later)
 - A Happy Scribe account with API access
-- Your Happy Scribe API key and organisation ID
+- Your Happy Scribe API key and organization ID
 
 ## Installation
 
@@ -39,7 +39,7 @@ Before using the workflow, you need to:
 2. Know your Happy Scribe organization ID
 3. Update the `organizationId` variable in the script if it's different from the default
 
-The default organisation ID is set to a placeholder ID "1234567". You'll need to modify line 35 in the script:
+The default organization ID in the script is set to "8761770". If your organization ID is different, you'll need to modify line 35 in the script:
 
 ```applescript
 -- Organization ID for Happy Scribe
@@ -52,13 +52,18 @@ set organizationId to "YOUR_ORGANIZATION_ID"
 2. Go to "Quick Actions" in the context menu
 3. Select "Send to Happy Scribe"
 4. The first time you use it, you'll be prompted to enter your API key
-5. The workflow will:
-   - Validate the file is an MP3
-   - Get a signed URL from Happy Scribe
-   - Upload the file to Happy Scribe's storage
-   - Create a transcription
-   - Show you the transcription ID
-   - Offer to open the transcription in your browser
+5. Confirm the transcription request
+6. A processing dialog will appear while the file is uploaded and transcription is created
+7. When complete, you'll see the transcription ID and option to open it in your browser
+
+## User Experience
+
+The workflow is designed to be minimal and unobtrusive:
+
+- **Single confirmation**: "Send [filename] to Happy Scribe?"
+- **Processing indicator**: Shows progress without multiple interruptions
+- **Success notification**: Displays transcription ID with browser option
+- **Maximum 2 dialog interactions** for the complete workflow
 
 ## Troubleshooting
 
@@ -87,3 +92,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - [Happy Scribe](https://www.happyscribe.com/) for providing the transcription API
+- [Automator](https://support.apple.com/guide/automator/) for making macOS workflow automation accessible
