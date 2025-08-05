@@ -38,31 +38,14 @@ on run {input, parameters}
         -- Organization ID for Happy Scribe
         set organizationId to "8761770"
         
-        -- Show a single confirmation dialog
+        -- Single confirmation dialog
         display dialog "Send \"" & fileName & "\" to Happy Scribe for transcription?" buttons {"Cancel", "Send"} default button "Send" with title "Happy Scribe Transcription"
         
-        -- Create a progress script that will run in background
-        set progressScript to "
-        tell application \"System Events\"
-            repeat
-                try
-                    do shell script \"test -f /tmp/happyscribe_progress\"
-                    delay 0.5
-                on error
-                    exit repeat
-                end try
-            end repeat
-        end tell"
-        
-        -- Start the background progress script
-        do shell script "echo " & quoted form of progressScript & " | osascript &"
-        
-        -- Create the progress flag file
-        do shell script "touch /tmp/happyscribe_progress"
-        
-        -- Show initial progress dialog that will auto-dismiss
+        -- Show single processing dialog that stays up during the entire process
         try
-            display dialog "⏳ Preparing upload to Happy Scribe..." buttons {} giving up after 2 with title "Happy Scribe Transcription" with icon note
+            tell application "Finder"
+                display dialog "⚡ Processing " & fileName & "..." & return & return & "This may take a moment..." buttons {} giving up after 30 with title "Happy Scribe Transcription" with icon note
+            end tell
         end try
         
         -- STEP 1: Get a signed URL for file upload
@@ -73,12 +56,10 @@ on run {input, parameters}
             
             -- Check for error response
             if signedUrlResponse contains "\"error\":" then
-                do shell script "rm -f /tmp/happyscribe_progress"
                 display dialog "Error getting signed URL from Happy Scribe. Please try again." buttons {"OK"} default button "OK" with icon stop
                 return input
             end if
         on error urlErr
-            do shell script "rm -f /tmp/happyscribe_progress"
             display dialog "Network error connecting to Happy Scribe. Please check your internet connection and try again." buttons {"OK"} default button "OK" with icon stop
             return input
         end try
@@ -98,15 +79,9 @@ on run {input, parameters}
             -- Extract the URL
             set signedUrl to text 1 thru (urlEndPos - 1) of remainingText
         else
-            do shell script "rm -f /tmp/happyscribe_progress"
             display dialog "Unable to get upload URL from Happy Scribe. Please try again." buttons {"OK"} default button "OK" with icon stop
             return input
         end if
-        
-        -- Show upload progress
-        try
-            display dialog "📤 Uploading file to Happy Scribe..." buttons {} giving up after 2 with title "Happy Scribe Transcription" with icon note
-        end try
         
         -- STEP 2: Upload the file to the signed URL
         set uploadCmd to "curl -s -X PUT -T " & quoted form of filePath & " " & quoted form of signedUrl
@@ -114,14 +89,8 @@ on run {input, parameters}
         try
             do shell script uploadCmd
         on error uploadErr
-            do shell script "rm -f /tmp/happyscribe_progress"
             display dialog "Error uploading file to Happy Scribe. Please try again." buttons {"OK"} default button "OK" with icon stop
             return input
-        end try
-        
-        -- Show transcription creation progress
-        try
-            display dialog "🎤 Creating transcription..." buttons {} giving up after 2 with title "Happy Scribe Transcription" with icon note
         end try
         
         -- STEP 3: Create a transcription using the file URL
@@ -137,9 +106,8 @@ on run {input, parameters}
         try
             set apiResponse to do shell script createCmd
             
-            -- Clean up temp file and progress flag
+            -- Clean up temp file
             do shell script "rm -f " & quoted form of tmpJsonFile
-            do shell script "rm -f /tmp/happyscribe_progress"
             
             -- Check for error response
             if apiResponse contains "\"error\":" then
@@ -162,11 +130,8 @@ on run {input, parameters}
                 -- Extract the ID
                 set transcriptionId to text 1 thru (idEndPos - 1) of remainingText
                 
-                -- Success notification
-                display notification "Transcription started successfully! ID: " & transcriptionId with title "Happy Scribe Transcription"
-                
                 -- Final success dialog with option to open
-                display dialog "✅ File successfully sent to Happy Scribe for transcription!" & return & return & "Transcription ID: " & transcriptionId buttons {"Done", "Open in Browser"} default button "Open in Browser" with title "Happy Scribe Transcription"
+                display dialog "✅ Transcription started successfully!" & return & return & "ID: " & transcriptionId buttons {"Done", "Open in Browser"} default button "Open in Browser" with title "Happy Scribe Transcription"
                 
                 if button returned of result is "Open in Browser" then
                     open location "https://www.happyscribe.com/transcriptions/" & transcriptionId
@@ -177,9 +142,8 @@ on run {input, parameters}
             end if
             
         on error apiErr
-            -- Clean up temp file and progress flag even if there's an error
+            -- Clean up temp file even if there's an error
             do shell script "rm -f " & quoted form of tmpJsonFile
-            do shell script "rm -f /tmp/happyscribe_progress"
             
             display dialog "Error creating transcription. Please try again." buttons {"OK"} default button "OK" with icon stop
             return input
@@ -187,8 +151,6 @@ on run {input, parameters}
         
         return input
     on error errMsg
-        -- Clean up progress flag if there's an unexpected error
-        do shell script "rm -f /tmp/happyscribe_progress"
         display dialog "An unexpected error occurred. Please try again." buttons {"OK"} default button "OK" with icon stop
         return input
     end try
