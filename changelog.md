@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2025-06-20
+### Added
+
+Single processing dialog for entire workflow
+Clean, minimal user experience with maximum 2 dialog interactions
+Professional "Processing..." indicator with auto-dismiss
+
+### Changed
+
+BREAKING: Replaced multiple progress dialogs with single processing indicator
+Streamlined workflow to just: Confirm → Process → Success
+Improved user experience to match native macOS app behavior
+Enhanced processing dialog with clear messaging and timeout
+
+### Removed
+
+Multiple step-by-step progress dialogs
+System notifications during processing
+Auto-dismissing intermediate progress messages
+Progress file management complexity
+
 ## [2.1.0] - 2025-06-20
 
 ### Added
